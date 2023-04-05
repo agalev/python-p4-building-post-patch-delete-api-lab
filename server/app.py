@@ -30,18 +30,28 @@ def bakeries():
     )
     return response
 
-@app.route('/bakeries/<int:id>')
+@app.route('/bakeries/<int:id>', methods=['GET', 'PATCH'])
 def bakery_by_id(id):
 
-    bakery = Bakery.query.filter_by(id=id).first()
-    bakery_serialized = bakery.to_dict()
+    if request.method == 'GET':
+        bakery = Bakery.query.filter_by(id=id).first()
+        bakery_serialized = bakery.to_dict()
 
-    response = make_response(
-        bakery_serialized,
-        200
-    )
-    return response
+        response = make_response(
+            bakery_serialized,
+            200
+        )
+        return response
+    elif request.method == 'PATCH':
+        query = Bakery.query.filter(Bakery.id == id).first()
+        for attr in request.form:
+            setattr(query, attr, request.form.get(attr))
+        db.session.add(query)
+        db.session.commit()
 
+        response = make_response(query.to_dict(), 200)
+        return response
+    
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
     baked_goods_by_price = BakedGood.query.order_by(BakedGood.price).all()
@@ -65,6 +75,30 @@ def most_expensive_baked_good():
         200
     )
     return response
+
+@app.route('/baked_goods', methods=['GET', 'POST'])
+def handleBakedGoods():
+    if request.method == 'POST':
+        new_bg = BakedGood(
+            name = request.form.get('name'),
+            price = request.form.get('price'),
+            bakery_id = request.form.get('bakery_id')
+        )
+        db.session.add(new_bg)
+        db.session.commit()
+        resp = make_response(new_bg.to_dict(), 201)
+        return resp
+@app.route("/baked_goods/<int:id>", methods=['GET', 'DELETE'])
+def handleBakedGoods_by_id(id):
+    if request.method == 'DELETE':
+        query = BakedGood.query.filter(BakedGood.id == id).first()
+        db.session.delete(query)
+        db.session.commit()
+    return make_response({
+        'Deleted': True
+    }, 200)
+
+
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
